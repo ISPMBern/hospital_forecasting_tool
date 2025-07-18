@@ -1,0 +1,132 @@
+---
+title: "USER GUIDE - forecasting tool for hospital demand during heat periods"
+author: "Laura Di Domenico"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This tool has been developed by researchers at ISPM, University of Bern, in the context of the NCCS project about impacts of climate change on health in Switzerland.
+
+This forecasting tool allows to:
+(i) quantify the association between visits to emergency department and daily temperature, based on historical data provided;
+(ii) generate short-term forecasts of the expected number of patient visits on new data, given temperature and number of visits observed in the past week and temperature forecasts for the next days.
+
+We showcase an application of the tool to data from the emergency department at Bern University Hospital, and mean temperature data for the city of Bern. You can upload your own data to test the tool for your case study.
+
+The app consists of three main sections. Follow the instructions below to navigate each section.
+
+## Section 1: Data
+
+This section allows the user to upload and visualize the raw data, and define the train and test set to be used by the model.
+
+#### Options
+
+On the left side of the panel, the user can act on the following options.
+
+**Choose data source**: the user can decide whether to explore a default dataset (*Bern case study*) or a new dataset by uploading a CSV file (*Upload your own data*). 
+
+- *Bern case study*: the default dataset consists of a time series of daily visits to the emergency department at the Bern University Hospital, along with the corresponding daily mean temperature. 
+- *Upload your own data*: if uploading a new CSV file, the user shall satisfy the following minimal requirements: include at least three columns, named 'date' (YYYY-MM-DD), 'hosp_counts' (number of daily visits to the hospital), and a column with temperature of interest (e.g., 'mean_temp' with the average daily temperature). In this case, the user will also be asked to declare the country under study, and the Swiss canton in the case of *country="Switzerland"*. This geographical information is used to provide the model with a list of public holidays for the time-series analysis.
+
+**Temperature indicator**: in this field, the user can select the name of the column in the dataset to be used as the temperature indicator of interest. By default, the name is "mean_temp" as mean temperature, but the user can choose other indicators e.g. the minimum or maximum temperature observed, if available.
+
+**Time period of interest**: this field allows the user to select a period within the year. The app is intended to be used during summer, so the default is to filter the dataset in order to include summer period only. The filter chosen will be applied to all years in the dataset.
+
+- *Summer months (June - August)*: include only data from June 1st to August 31st
+- *Other*: this option allows the user to insert a start and end date for the period of interest (in the format MM-DD, MM-DD), for example from June 15th to September 15th. Ideally, the time period of interest should span over the hottest months in your data. 
+
+**Training set**: define the start date and end date of the train set to be used to fit the model, by writing two dates in the format YYYY-MM-DD. This allows you to exclude periods of data from the analysis. The train set will be the result of this filter and the filter defined in the option *Time period of interest*. For example, the default options *Training set (start date, end date) = 2014-01-08, 2021-12-31* and *Time period of interest = Summer months (June - August)* will include data from 2014 to 2021, and for each year will include data from June 1st to August 31st. 
+
+**Test set**: define the start date and end date of the train set to be used to fit the model, by writing two dates in the format YYYY-MM-DD. Ideally, the test set should include data outside of the train set, to check the performance of the model on new data. However, the user can also choose to train the model on all data available, and test the performance on a subset of the data. The test set chosen will be used in Section 2 to compute forecasts errors and evaluate the model.
+
+#### Output
+
+On the right, the user can visualize the data. 
+
+The figure includes two panels with the daily time-series of hospital visits and temperature data, together with two panels with the data distribution for each year. In the former, the train set and test set are shown in green and orange. The latter allows to easily compare data across years to detect temporal changes in hospital visits, or identify particularly hot years. 
+
+On the bottom of the figure, the user can navigate through a data table, to check the contents and the names of the columns in the dataset.
+
+## Section 2: Model
+
+This section allows the user to configure the forecasting model. The user can select between two options: "Beginner" mode and "Expert" mode. In the "Beginner model",  the tool will use a default regression model with the following predictors: seven days of past hospital data, day of the week and holiday, change of level during the pandemic period, and temperature. The association with temperature is non-linear and modelled with natural cubic splines with 4 degrees of freedom and including up to 3 days of lag. To change this, go to the "Expert" mode.
+
+#### Options in the "Expert" mode
+
+**7 days of past hospital data** (Yes/No): include past data (i.e. autoregressive terms) as predictors in the regression model 
+
+**Day of week & holiday** (Yes/No): include an indicator for the day of the week or a bank holiday as predictor in the regression model 
+
+**Change of level for pandemic period (2020-2022)** (Yes/No) : include as a predictor a binary variable  which equals to 1 for days falling within the pandemic period (defined from start of 2020 to end of 2022), and equals to 0 otherwise. This allows the model to fit an additional intercept, to capture a change of level in the baseline number of hospital visits during the pandemic period. The user can refer to the plot of the data distribution across years in the first section to verify if this is the case.
+
+**Maximum lag for temperature** (from 1 to 7, default 3): this is the number of temperature lags to be included in the non-linear distributed lag model to estimate the association with temperature. The default (maximum lag = 3) means that, in order to predict the number of hospital visits on a given day, the model will include as predictors the temperature data on the same day (lag 0) and the temperature data up to 3 days in the past (lag 1, lag 2 and lag 3).
+
+**Internal knots**: define the placements of the knots for the spline functions. The association with temperature is modeled with natural cubic splines (i.e. a piecewise-defined function composed of 3-degree polynomials with linear constraints on the boundary). The number of internal knots will define the number of degrees of freedom, i.e. the flexibility of the splines. The default position of the internal knots is set at the 10%, 50% and 90% quantile of the distribution of the observed temperature data in the training set. Different quantiles can be chosen from the dropdown menu, or manually chosen (option *manual*). Ideally, it is better to place one central knot, and two knots close to the boundaries, to stabilize the estimated trend.
+
+#### Output
+
+In the "Beginner" mode, the user will be shown a figure with the cumulative exposure-response function. This represents the non-linear association between the number of hospital visits and the temperature. 
+
+In the "Expert" model, the user will also be shown the exposure-lag-response function (i.e. the function broken down by lag) and a list of tabs with additional plots and details about the outcome of the model. In particular, the user can navigate through the following tabs:
+
+- *Temperature data (aggregated)*:  histograms with the observed temperature data in the train and test set, useful to check the sample size especially towards the boundaries.
+
+- *Temperature data (per year)*: time series of the observed temeprature data per year, useful to check days with particularly high temperature. Days with temperature above a given threshold will be highlighted in red.
+
+- *Model inputs*: a table with a summary of the input values used to define the regression model. 
+
+- *Model summary*: output of the *summary( )* function in R applied to the regression model. 
+
+- *Other regression coefficients*: here we show plots of the estimated coefficients associated with non-temperature predictors.
+
+- *Evaluation metrics*: tables with a list of metrics evaluated on the train and test set. They include the root-mean-square-error (RMSE) and the mean-absolute-error (MAE), and the Akaike Information Criterion (AIC). The lower, the better. The results are shown for the reference regression model, in comparison with a model without temperature as predictor (rows tagged as "w/o temperature") and a naive model of last-observation-carried-forward (LOCF), i.e. by shifting the time-series by either 1 day or 7 days. 
+
+- *Fit on train set*: plot of the data (in black) and the model fit (in green) for the training set. The model fit shows one-step ahead predictions.
+
+- *Forecasts on test set*: here we show visual examples of forecasts in three time windows. In a 21-days forecast starting on a given day *d*, the model will make a prediction for day *d* based on the hospital data from day *d-1* up to day *d-7*; for the following days, the model will use the past forecasts to extend the prediction, i.e. forecast for day *d+1* will use the information of the forecast on day *d* and past data, forecast for day *d+2* will use the information of the forecast on day *d+1* and *d* and past data, and so on. On the right, we show the distribution of the RMSE for any starting date in the test set, for different forecast horizons.
+
+- *Forecast errors*: here we show forecast errors of the model, as above, in comparison with the forecast errors of a model which does not include temperature. On the right, the user can select a temperature threshold to compute the average forecast errors only in those windows with average temperature higher than the threshold. In doing so, one can evaluate the performance of the model in particularly hot periods, with respect to a model which disregards temperature. 
+
+- *Forecast errors (cross validation)*: here we show forecast errors on the test set, after cross validation across years. For each year in the data, we train the model on all years except one year, and test the model on the remaining data. Then, we compute forecast errors on the test set, analogously to what is done in the 'Forecast errors' tab.
+
+The forecasts shown in the last three tabs use are computed "retrospectively" on the test set, i.e. they use temperature data that have been actually measured in the test set as expected temperature data in the "future". To produce real-time forecasts, go to the next section.
+
+## Section 3: Forecasts
+
+This section generates forecasts based on the selected model and data, and using expected temperature data for future days. 
+
+#### Options
+
+The user can choose one of the following modes.
+
+**Select dataset for forecasts = Test set** This option will allow the user to generate retrospective forecasts on the test set. the test set defined in the previous section, and the expected temperature data will be the actual temperature data measured in the test set. This is useful to evaluate the performance of the model on new data, and compare it with the performance on the training set. The user can actively change the starting date of the forecasts and the length of the forecast window to explore different scenarios.
+
+**Select dataset for forecasts = New data (upload)** This option will allow the user to generate forecasts on new data, simulating a real-time scenario.
+The user can upload a CSV file with a list of observed hospital data and temperature data as of today, and a list expected temperatures from tomorrow on, based on e.g. weather forecasts. 
+
+#### Output
+
+The output includes three figures showing:
+
+- the daily number of hospital visits predicted by the model, 
+- the daily temperature data used in input, and 
+- a summary plot with the weekly cumulative number of hospital visits predicted for next week, in comparison with the cumulative number observed in the current week (i.e. the last 7 days of hospital data provided) and the previous week; for the forecast for next week, the plot shows the point prediction and the prediction interval; this plot is intended to be used to provide an indication of the expected future trend in comparison with the past weeks.
+
+
+## Requirements
+This app makes use of the following R libraries: DT, tidyverse, ggpubr, zoo, timeDate, splines, MASS, Epi, matrixStats, Metrics, ciTools, viridis.
+
+- To run this R shiny app locally on your machine, please install R and the above packages, and download the source code from the GitHub repository   https://github.com/ISPMBern/hospital_forecasting_tool/tree/main.
+- Alternatively, you can use this app online at the following link: [https://hospital-forecasting-tool.ispm.unibe.ch/](https://hospital-forecasting-tool.ispm.unibe.ch/). The app is hosted on the ISPM server, in Bern, Switzerland. 
+
+## License
+This app is licensed under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.html) license, under the ["Commons Clause" condition](https://commonsclause.com/).
+
+## Contact
+For any questions or issues, you can contact laura.didomenico@uhasselt.be.
