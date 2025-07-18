@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/1021958337.svg)](https://doi.org/10.5281/zenodo.16087931)
+
 # Forecasting tool for hospital demand during heat periods
 
 This tool has been developed by researchers at ISPM, University of Bern, in the context of the NCCS project about impacts of climate change on health in Switzerland.
