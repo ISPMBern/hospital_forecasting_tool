@@ -1,5 +1,4 @@
-# hospital_forecasting_tool
-Forecasting tool for hospital demand during heat periods.
+# Forecasting tool for hospital demand during heat periods
 
 This tool has been developed by researchers at ISPM, University of Bern, in the context of the NCCS project about impacts of climate change on health in Switzerland.
 
