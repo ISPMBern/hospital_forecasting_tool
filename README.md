@@ -13,10 +13,9 @@ If you use this tool, please refer to the following manuscript:
 Di Domenico L, Wohlfender MS, Hautz WE, Vicedo-Cabrera AM, Althaus CL,
 A forecasting tool of hospital demand during heat periods: a case study in Bern, Switzerland
 
-This app makes use of the following R libraries: DT, tidyverse, ggpubr, zoo, timeDate, splines, MASS, Epi, matrixStats, Metrics, ciTools, viridis.
+You can use the tool through the web-application online at https://hospital-forecasting-tool.ispm.unibe.ch/. The app is hosted on the ISPM server, in Bern, Switzerland.
 
-To run this R shiny app locally on your machine, please install R and the above packages, and download the source code from the GitHub repository https://github.com/ISPMBern/hospital_forecasting_tool/tree/main.
-Alternatively, you can use this app online at the following link: https://hospital-forecasting-tool.ispm.unibe.ch/. The app is hosted on the ISPM server, in Bern, Switzerland.
+Alternatively, to run this R shiny app locally on your machine, you can download this source code from this GitHub repository. This app makes use of the following R libraries: DT, tidyverse, ggpubr, zoo, timeDate, splines, MASS, Epi, matrixStats, Metrics, ciTools, viridis.
 
 This app is licensed under the [GNU General Public License v3 license](https://www.gnu.org/licenses/gpl-3.0.html), under the [“Commons Clause” condition](https://commonsclause.com/).
 
