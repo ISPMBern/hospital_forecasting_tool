@@ -13,8 +13,8 @@ You can upload your own data to test the tool for your case study. Check this [u
 
 If you use this tool, please refer to the following manuscript:
 
-__Di Domenico L, Wohlfender MS, Hautz WE, Vicedo-Cabrera AM, Althaus CL__
-_A forecasting tool of hospital demand during heat periods: a case study in Bern, Switzerland_ (available soon)
+Di Domenico, L., Wohlfender, M. S., Hautz, W. E., Vicedo-Cabrera, A. M. & Althaus, C. L. _A forecasting tool of hospital demand during heat periods: a case study in Bern, Switzerland._ Preprint at https://doi.org/10.1101/2025.11.12.25340087 (2025).
+
 
 You have two options to test our tool:
 - You can use the tool online through the web-application at https://hospital-forecasting-tool.ispm.unibe.ch/. The app is hosted on the ISPM server, in Bern, Switzerland.
