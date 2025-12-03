@@ -1747,6 +1747,14 @@ server <- function(input, output, session) {
       points(data$date[c((day_start_index):window)], 
              predlag_scenario[(day_start_index):window,"predictions"], col=col_scenario, pch=16, cex=1)
       
+      forecast_error <- rmse(data$hosp_0[c(day_start_index:nrow(data))], predlag_scenario[day_start_index:window,"predictions"])
+      
+      par(xpd = TRUE)   # allow drawing outside plot region
+      text(data$date[window]+2, 
+           min(predlag_scenario[,"lwr_90"], na.rm = TRUE), 
+           labels = paste("RMSE =", round(forecast_error,1)), cex = 1.3, adj = 0)
+      par(xpd = FALSE)  # optional: restore clipping
+      
       legend(x = "topleft",
              inset = c(1.02, 0),  # shift legend outside plot 
              legend = c("data", paste0(window_length, "-days \nforecasts"), "50% PI", "90% PI"), 
@@ -1822,6 +1830,13 @@ server <- function(input, output, session) {
       text(bp-0.25, counts + counts*0.01, 
            labels = round(counts), cex = 1.0)
       
+      # make a scatter plot of the observed hosp visits for next week
+      obs_data_future <- sum(data[day_start_index:(day_start_index+7-1), "hosp_0"])
+      
+      # plot it on the right bar (prediction for next week)
+      points(bp[3], obs_data_future,
+             pch = 21, bg = "white", col = "black", cex = 2, lwd = 2)
+      
       bp
     
     }
@@ -1843,11 +1858,80 @@ server <- function(input, output, session) {
     }
   )
   
+  daily_retrospective_forecast_df <- reactive({
+    
+    req(input$start_date_forecast)
+    
+    # starting date for forecast
+    day_start <- as.Date(input$start_date_forecast, format="%Y-%m-%d") 
+    data <- data_test()
+    window_length <- input$window_length
+    
+    # filter data around the starting date of the forecast window
+    data <- subset(data, as.Date(date) >= day_start - 14)
+    data <- subset(data, as.Date(date) <= day_start + input$window_length - 1)
+    
+    # check that length data$date > day_start is at least long as window length
+    validate(
+      need(( !is.na(input$start_date_forecast) && length(data$date) >= 14 + window_length ), 
+           paste0("Restoring to default starting date..."))
+    )
+    
+    # add spline basis 
+    if (input_spline_type=="Natural (cubic) splines") {
+      for (v in c("temp_0", 
+                  "temp_minus_1", "temp_minus_2",
+                  "temp_minus_3", "temp_minus_4", 
+                  "temp_minus_5", "temp_minus_6", "temp_minus_7")) {
+        s <- ns(as.numeric(unlist(data[,v])),  
+                knots=tknots(), Boundary.knots=bound_knots()) 
+        colnames(s) <- paste0(v, "_bs_", colnames(s))
+        data <- cbind(data, s)
+      }
+    }
+    else{
+      stop("Error: only natural (cubic) splines are currently supported.")
+    }
+    
+    # get index of day_start in dataframe data
+    day_start_index <-  which(data$date == day_start)
+    
+    ##### k-step ahead forecast
+    window <- day_start_index + window_length - 1
+    
+    # apply k_step_forecast function
+    predlag_scenario <- k_step_forecast_uncertainty(data, day_start_index, window, model(), 
+                                                    input_spline_type, tknots(), bound_knots(), TRUE)
+    
+    #### create dataframe with predictions over the forecast window
+    df <- data.frame(
+      date        = data$date[c(day_start_index:nrow(data))],
+      observed    = data$hosp_0[c(day_start_index:nrow(data))], 
+      prediction  = predlag_scenario[day_start_index:(window), "predictions"],
+      lwr_50      = predlag_scenario[day_start_index:(window), "lwr_50"],
+      upr_50      = predlag_scenario[day_start_index:(window), "upr_50"],
+      lwr_90      = predlag_scenario[day_start_index:(window), "lwr_90"],
+      upr_90      = predlag_scenario[day_start_index:(window), "upr_90"]
+    )
+    
+    df
+  })
+  
+  output$downloadRetrospectiveForecastResults <- downloadHandler(
+    filename = function() {
+      paste0("daily_forecast_", input$start_date_forecast, ".csv")
+    },
+    content = function(file) {
+      write.csv(daily_retrospective_forecast_df(), file, row.names = FALSE)
+    }
+  )
+  
   ## customized scenario with temperature from external file ############################################################################
   
   ## if user uploads his dataset
   ## we store it in the data folder
   observeEvent(input$file_temperature, {
+    
     req(input$file_temperature)  # Ensure a file is uploaded
     
     # Define file path
@@ -1893,6 +1977,8 @@ server <- function(input, output, session) {
   
   ## read raw temperature data for forecasts
   data_raw_temperature <- reactive({
+    
+    req(input$file_temperature)  # Ensure a file is uploaded
     
     if (input$mode_temperature == "New data (upload)") {
       ## see data_read() function in the script functions.R
@@ -2176,6 +2262,101 @@ server <- function(input, output, session) {
       png(file, width = 9, height = 6, units = "in", res = 300)
       drawNewForecastPlot()
       dev.off()
+    }
+  )
+  
+  daily_new_forecast_df <- reactive({
+    
+    req(input$file_temperature)  # Ensure a file is uploaded
+    
+    # Find the first index where 'hosp_counts' is NA
+    day_start_index <- which(is.na(data_raw_temperature()$hosp_counts))[1]
+    # Get the corresponding date
+    day_start <- data_raw_temperature()$date[day_start_index]
+    
+    # filter data_raw for date > day_start - 7
+    data <- data_raw_temperature()[, c("date", "hosp_counts", input$temp_indicator)]
+    
+    if (nrow(subset(data, as.Date(date) < day_start)) < 7) {
+      stop("Include at least 7 days in the past.")
+    }
+    
+    window_length <- nrow(subset(data, as.Date(date) >= day_start))
+    
+    if (window_length < 7) {
+      stop("Include at least 7 days of expected temperature.")
+    }
+    
+    # apply function for data preprocessing
+    data <- data_preprocessing(data = data, 
+                               temp_col = input$temp_indicator, 
+                               input_months = input$months, 
+                               input_data = input$data,
+                               country = input$country,
+                               canton = input$canton, 
+                               date_period_of_interest = input$date_period_of_interest) 
+    
+    # add spline basis 
+    if (input_spline_type=="Natural (cubic) splines") {
+      for (v in c("temp_0", 
+                  "temp_minus_1", "temp_minus_2",
+                  "temp_minus_3", "temp_minus_4", 
+                  "temp_minus_5", "temp_minus_6", "temp_minus_7")) {
+        s <- ns(as.numeric(unlist(data[,v])),  
+                knots=tknots(), Boundary.knots=bound_knots()) 
+        colnames(s) <- paste0(v, "_bs_", colnames(s))
+        data <- cbind(data, s)
+      }
+    }
+    else{
+      stop("Error: only natural (cubic) splines are currently supported.")
+    }
+    
+    # get index of day_start in dataframe data
+    day_start_index <-  which(data$date == day_start)
+    
+    ##### k-step ahead forecast
+    window <- day_start_index + window_length - 1
+    
+    input_temperature <- data.frame(date = data$date)
+    
+    h<-0
+    h<-h+1
+    scenario_data <- data[, c("date", "hosp_counts", input$temp_indicator)]
+    input_temperature[[paste0("scenario_", h)]] <- scenario_data[,input$temp_indicator]
+    
+    scenario_data <- data_preprocessing(data = scenario_data, 
+                                        temp_col = input$temp_indicator, 
+                                        input_months = input$months, 
+                                        input_data = input$data,
+                                        country = input$country,
+                                        canton = input$canton, 
+                                        date_period_of_interest = date_period_of_interest()) 
+    
+    # apply k_step_forecast function
+    predlag_scenario <- k_step_forecast_uncertainty(scenario_data, day_start_index, window, model(), 
+                                                   input_spline_type, tknots(), bound_knots(), TRUE)
+    
+    #### create dataframe with predictions over the forecast window
+    df <- data.frame(
+      date        = data$date[c(day_start_index:nrow(data))],
+      observed    = data$hosp_counts[c(day_start_index:nrow(data))], 
+      prediction  = predlag_scenario[day_start_index:(window), "predictions"],
+      lwr_50      = predlag_scenario[day_start_index:(window), "lwr_50"],
+      upr_50      = predlag_scenario[day_start_index:(window), "upr_50"],
+      lwr_90      = predlag_scenario[day_start_index:(window), "lwr_90"],
+      upr_90      = predlag_scenario[day_start_index:(window), "upr_90"]
+    )
+    
+    df
+  })
+  
+  output$downloadNewForecastResults <- downloadHandler(
+    filename = function() {
+      paste0("daily_forecast_", data_raw_temperature()$date[which(is.na(data_raw_temperature()$hosp_counts))[1]], ".csv")
+    },
+    content = function(file) {
+      write.csv(daily_new_forecast_df(), file, row.names = FALSE)
     }
   )
   

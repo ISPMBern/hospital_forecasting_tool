@@ -445,6 +445,7 @@ fluidPage(
       mainPanel(
         plotOutput("renderRetrospectiveForecastPlot", height=500),
         downloadButton("downloadRetrospectiveForecastPlot", "Download Plot"),
+        downloadButton("downloadRetrospectiveForecastResults", "Download Forecast Results (.csv)")
       ),
     ),
   ),
@@ -464,6 +465,7 @@ fluidPage(
         uiOutput("file_upload_help_panel"),
         plotOutput("renderNewForecastPlot", height=500),
         downloadButton("downloadNewForecastPlot", "Download Plot"),
+        downloadButton("downloadNewForecastResults", "Download Forecast Results (.csv)"),
         p(" "),
         DTOutput("viewDataRawTemperature"),
       ),
