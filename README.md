@@ -13,7 +13,7 @@ You can upload your own data to test the tool for your case study. Check this [u
 
 If you use this tool, please refer to the following manuscript:
 
-Di Domenico, L., Wohlfender, M. S., Hautz, W. E., Vicedo-Cabrera, A. M. & Althaus, C. L. _A forecasting tool of hospital demand during heat periods: a case study in Bern, Switzerland._ Preprint at https://doi.org/10.1101/2025.11.12.25340087 (2025).
+Di Domenico L, Wohlfender MS, Hautz WE, Vicedo-Cabrera AM, Althaus C. Forecasting tool of hospital demand during heat periods: a time-series regression study in Bern, Switzerland. BMJ Public Health. 2026 Aug 11;4(3):e004559. doi: 10.1136/bmjph-2025-004559. PMID: 42602843; PMCID: PMC13475132.
 
 
 You have two options to test our tool:
